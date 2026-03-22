@@ -608,6 +608,7 @@ export class AppServerClient {
           message: 'Response too large',
           errorType: 'server_error',
         });
+        return;
       }
     }
   }
@@ -661,8 +662,9 @@ export class AppServerClient {
     if (!inflight.stream && inflight.gracePeriodTimer) {
       clearTimeout(inflight.gracePeriodTimer);
       inflight.gracePeriodTimer = null;
-      // Send the non-streaming response now
+      // Send the non-streaming response now, then release the slot and archive
       this.sendNonStreamingResponse(inflight);
+      this.triggerCleanup(inflight, { type: 'success' });
     }
   }
 
