@@ -1,0 +1,57 @@
+module.exports = {
+  apps: [
+    {
+      name: 'codex-app-server',
+      script: 'codex',
+      args: 'app-server --listen ws://127.0.0.1:3461 --session-source openclaw-proxy',
+      autorestart: true,
+      max_restarts: 10,
+      restart_delay: 2000,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      out_file: '/home/gpu1/.pm2/logs/codex-app-server-out.log',
+      error_file: '/home/gpu1/.pm2/logs/codex-app-server-error.log',
+      merge_logs: true,
+      log_rotate_max_size: '10M',
+      log_rotate_interval: '1d',
+      env: {
+        NODE_ENV: 'production',
+      },
+    },
+    {
+      name: 'codex-proxy',
+      script: 'node',
+      args: 'dist/server/standalone.js',
+      cwd: '/home/gpu1/codex-proxy',
+      // CRITICAL: must be > 30s graceful drain timeout
+      // Without this, PM2's default ~1600ms SIGKILL kills before graceful shutdown completes
+      kill_timeout: 35000,
+      wait_ready: true,
+      listen_timeout: 60000,
+      autorestart: true,
+      max_restarts: 10,
+      restart_delay: 2000,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      out_file: '/home/gpu1/.pm2/logs/codex-proxy-out.log',
+      error_file: '/home/gpu1/.pm2/logs/codex-proxy-error.log',
+      merge_logs: true,
+      log_rotate_max_size: '10M',
+      log_rotate_interval: '1d',
+      env: {
+        NODE_ENV: 'production',
+        CODEX_APP_SERVER_URL: 'ws://127.0.0.1:3461',
+        CODEX_PROXY_PORT: '3460',
+        CODEX_DEFAULT_MODEL: 'gpt-4o',
+        CODEX_DEFAULT_EFFORT: 'medium',
+        CODEX_MAX_CONCURRENT: '5',
+        CODEX_MAX_QUEUE_DEPTH: '20',
+        CODEX_QUEUE_TIMEOUT_MS: '120000',
+        CODEX_PROXY_TIMEOUT_MS: '900000',
+        CODEX_PROXY_RATE_LIMIT: '60',
+        CODEX_ORPHAN_SWEEP_INTERVAL_MS: '900000',
+        CODEX_DEGRADATION_THRESHOLD: '5',
+        CODEX_MAX_RESPONSE_SIZE: '5242880',
+        // CODEX_PROXY_API_KEY: set via environment or .env file, NOT here
+      },
+    },
+  ],
+};
