@@ -493,7 +493,17 @@ export class AppServerClient {
     }
     if (inflight.cleanupDone) return;
 
-    // If turnId not yet set, buffer the delta
+    // If turnId not yet set, try to resolve from delta params before buffering
+    if (!inflight.turnId) {
+      if (turnId) {
+        // Delta carries turnId — resolve it now and flush buffer
+        inflight.turnId = turnId;
+        this.flushDeltaBuffer(inflight);
+        // Fall through to emit current delta normally (turnId is now set)
+      }
+    }
+
+    // If turnId still not set after attempting resolution, buffer the delta
     if (!inflight.turnId) {
       // Check buffer limits
       inflight.deltaBufferSize += delta.length;
