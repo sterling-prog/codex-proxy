@@ -24,7 +24,7 @@ ACCESS_TOKEN=$(AUTH_FILE="${AUTH_FILE}" python3 -c "
 import json, sys, os
 try:
     data = json.load(open(os.environ['AUTH_FILE']))
-    token = data.get('accessToken') or data.get('access_token') or data.get('token')
+    token = data.get('accessToken') or data.get('access_token') or data.get('token') or (data.get('tokens') or {}).get('access_token')
     if not token:
         print('', end='')
     else:
