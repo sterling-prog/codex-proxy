@@ -738,7 +738,7 @@ export class AppServerClient {
   }
 
   private onTurnCompleted(params: TurnCompletedParams): void {
-    const threadId = params.thread.id;
+    const threadId = params.thread?.id ?? (params as unknown as { threadId: string }).threadId;
     const turn = params.turn;
     const inflight = this.inFlightRequests.get(threadId);
 
@@ -1057,7 +1057,7 @@ export class AppServerClient {
       if (cursor) params.cursor = cursor;
 
       const result = await this.sendRequest<ModelListResult>('model/list', params);
-      models.push(...result.models);
+      models.push(...result.data);
       cursor = result.nextCursor ?? undefined;
     } while (cursor);
 
@@ -1100,7 +1100,7 @@ export class AppServerClient {
         const result = await this.sendRequest<ThreadListResult>('thread/list', params);
         cursor = result.nextCursor ?? undefined;
 
-        for (const thread of result.threads) {
+        for (const thread of result.data) {
           // Check in-flight map immediately before each archive
           if (this.inFlightRequests.has(thread.id)) {
             log.debug('Skipping active thread in orphan sweep', { threadId: thread.id });

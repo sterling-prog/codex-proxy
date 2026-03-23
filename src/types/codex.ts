@@ -171,7 +171,7 @@ export interface ThreadListItem {
 }
 
 export interface ThreadListResult {
-  threads: ThreadListItem[];
+  data: ThreadListItem[];
   nextCursor: string | null;
 }
 
@@ -198,7 +198,7 @@ export interface Model {
 }
 
 export interface ModelListResult {
-  models: Model[];
+  data: Model[];
   nextCursor: string | null;
 }
 
