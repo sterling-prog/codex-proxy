@@ -43,9 +43,9 @@ OpenAI Chat Completions–compatible HTTP proxy that routes inference through th
 
 ## PM2 Management
 ```
-pm2 startOrRestart ecosystem.config.js
-pm2 save
+cd ~/codex-proxy && pm2 start ecosystem.config.cjs && pm2 save
 ```
+Note: ecosystem config uses `.cjs` extension because `package.json` has `"type": "module"`.
 
 ## Manual Re-auth Procedure
 1. `codex login --device-auth` on gpu1
