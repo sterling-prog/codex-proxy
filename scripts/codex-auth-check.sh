@@ -20,10 +20,10 @@ fi
 
 # ─── Extract access token ─────────────────────────────────────────────────────
 
-ACCESS_TOKEN=$(python3 -c "
-import json, sys
+ACCESS_TOKEN=$(AUTH_FILE="${AUTH_FILE}" python3 -c "
+import json, sys, os
 try:
-    data = json.load(open('${AUTH_FILE}'))
+    data = json.load(open(os.environ['AUTH_FILE']))
     token = data.get('accessToken') or data.get('access_token') or data.get('token')
     if not token:
         print('', end='')
@@ -43,10 +43,10 @@ fi
 
 # ─── Decode JWT exp claim ─────────────────────────────────────────────────────
 
-EXP=$(python3 -c "
-import base64, json, sys
+EXP=$(ACCESS_TOKEN="${ACCESS_TOKEN}" python3 -c "
+import base64, json, sys, os
 
-token = '${ACCESS_TOKEN}'
+token = os.environ['ACCESS_TOKEN']
 parts = token.split('.')
 if len(parts) != 3:
     print(-1)
