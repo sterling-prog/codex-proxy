@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Codex auth health check — reads ~/.codex/auth.json, decodes JWT exp claim,
-# alerts via Discord #infra-agent-swarm (1475832162648461316) if expiry within 48 hours.
+# alerts via Discord #status-updates (1485787606561062942) if expiry within 48 hours.
 # Schedule: every 1 hour via OpenClaw cron.
 
 set -euo pipefail
 
 AUTH_FILE="${HOME}/.codex/auth.json"
-ALERT_CHANNEL="1475832162648461316"
+ALERT_CHANNEL="1485787606561062942"
 WARN_SECONDS=$((48 * 3600))  # 48 hours
 
 # ─── Read auth.json ───────────────────────────────────────────────────────────
