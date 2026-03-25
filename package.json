@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/server/standalone.js"
+    "start": "node dist/server/standalone.js",
+    "test": "npm run build && node tests/tool-policy.test.mjs"
   },
   "dependencies": {
     "express": "^4.21.2",

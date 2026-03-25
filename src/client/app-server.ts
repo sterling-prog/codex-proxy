@@ -28,16 +28,23 @@ import type {
   ErrorNotificationParams,
   AnyServerRequest,
   CommandExecutionDenial,
+  CommandExecutionApproval,
+  CommandExecutionParams,
   FileChangeDenial,
+  FileChangeApproval,
+  FileChangeParams,
   PermissionsRequestApprovalResponse,
   ToolRequestUserInputResponse,
   ToolCallDenial,
   McpElicitationDenial,
   ApplyPatchDenial,
+  ApplyPatchApprovalResult,
   ExecCommandDenial,
+  ExecCommandApprovalResult,
   TurnInterruptParams,
   UserInput,
 } from '../types/codex.js';
+import { evaluateCommandExecution, evaluateFileChange, getConfig } from '../policy/tool-policy.js';
 
 // ─── Module-level ID counter (NEVER resets) ──────────────────────────────────
 let nextId = 1;
@@ -405,16 +412,33 @@ export class AppServerClient {
 
     switch (method) {
       case 'item/commandExecution/requestApproval': {
-        const denial: CommandExecutionDenial = { decision: 'decline' };
-        result = denial;
+        const params = req.params as CommandExecutionParams | undefined;
+        const decision = evaluateCommandExecution(params, getConfig());
+        log.info('Tool policy', { method, decision: decision.approved ? 'APPROVED' : 'DENIED', reason: decision.reason, command: params?.command });
+        if (decision.approved) {
+          const approval: CommandExecutionApproval = { decision: 'accept' };
+          result = approval;
+        } else {
+          const denial: CommandExecutionDenial = { decision: 'decline' };
+          result = denial;
+        }
         break;
       }
       case 'item/fileChange/requestApproval': {
-        const denial: FileChangeDenial = { decision: 'decline' };
-        result = denial;
+        const params = req.params as FileChangeParams | undefined;
+        const decision = evaluateFileChange(params, getConfig());
+        log.info('Tool policy', { method, decision: decision.approved ? 'APPROVED' : 'DENIED', reason: decision.reason, grantRoot: params?.grantRoot });
+        if (decision.approved) {
+          const approval: FileChangeApproval = { decision: 'accept' };
+          result = approval;
+        } else {
+          const denial: FileChangeDenial = { decision: 'decline' };
+          result = denial;
+        }
         break;
       }
       case 'item/permissions/requestApproval': {
+        log.info('Tool policy', { method, decision: 'DENIED', reason: 'permissions always denied' });
         const denial: PermissionsRequestApprovalResponse = { permissions: {}, scope: 'turn' };
         result = denial;
         break;
@@ -435,13 +459,39 @@ export class AppServerClient {
         break;
       }
       case 'applyPatchApproval': {
-        const denial: ApplyPatchDenial = { decision: 'denied' };
-        result = denial;
+        // Legacy: treat as file change — extract path from params if available
+        const rawParams = req.params as Record<string, unknown> | undefined;
+        const grantRoot = typeof rawParams?.['path'] === 'string' ? rawParams['path'] : null;
+        const decision = evaluateFileChange(
+          grantRoot ? { itemId: '', threadId: '', turnId: '', grantRoot } : null,
+          getConfig(),
+        );
+        log.info('Tool policy', { method, decision: decision.approved ? 'APPROVED' : 'DENIED', reason: decision.reason, grantRoot });
+        if (decision.approved) {
+          const approval: ApplyPatchApprovalResult = { decision: 'approved' };
+          result = approval;
+        } else {
+          const denial: ApplyPatchDenial = { decision: 'denied' };
+          result = denial;
+        }
         break;
       }
       case 'execCommandApproval': {
-        const denial: ExecCommandDenial = { decision: 'denied' };
-        result = denial;
+        // Legacy: treat as command execution
+        const rawParams = req.params as Record<string, unknown> | undefined;
+        const command = typeof rawParams?.['command'] === 'string' ? rawParams['command'] : null;
+        const decision = evaluateCommandExecution(
+          command ? { itemId: '', threadId: '', turnId: '', command } : null,
+          getConfig(),
+        );
+        log.info('Tool policy', { method, decision: decision.approved ? 'APPROVED' : 'DENIED', reason: decision.reason, command });
+        if (decision.approved) {
+          const approval: ExecCommandApprovalResult = { decision: 'approved' };
+          result = approval;
+        } else {
+          const denial: ExecCommandDenial = { decision: 'denied' };
+          result = denial;
+        }
         break;
       }
       default:
@@ -493,7 +543,17 @@ export class AppServerClient {
     }
     if (inflight.cleanupDone) return;
 
-    // If turnId not yet set, buffer the delta
+    // If turnId not yet set, try to resolve from delta params before buffering
+    if (!inflight.turnId) {
+      if (turnId) {
+        // Delta carries turnId — resolve it now and flush buffer
+        inflight.turnId = turnId;
+        this.flushDeltaBuffer(inflight);
+        // Fall through to emit current delta normally (turnId is now set)
+      }
+    }
+
+    // If turnId still not set after attempting resolution, buffer the delta
     if (!inflight.turnId) {
       // Check buffer limits
       inflight.deltaBufferSize += delta.length;
@@ -608,6 +668,7 @@ export class AppServerClient {
           message: 'Response too large',
           errorType: 'server_error',
         });
+        return;
       }
     }
   }
@@ -661,8 +722,9 @@ export class AppServerClient {
     if (!inflight.stream && inflight.gracePeriodTimer) {
       clearTimeout(inflight.gracePeriodTimer);
       inflight.gracePeriodTimer = null;
-      // Send the non-streaming response now
+      // Send the non-streaming response now, then release the slot and archive
       this.sendNonStreamingResponse(inflight);
+      this.triggerCleanup(inflight, { type: 'success' });
     }
   }
 
@@ -726,7 +788,7 @@ export class AppServerClient {
   }
 
   private onTurnCompleted(params: TurnCompletedParams): void {
-    const threadId = params.thread.id;
+    const threadId = params.thread?.id ?? (params as unknown as { threadId: string }).threadId;
     const turn = params.turn;
     const inflight = this.inFlightRequests.get(threadId);
 
@@ -1045,7 +1107,7 @@ export class AppServerClient {
       if (cursor) params.cursor = cursor;
 
       const result = await this.sendRequest<ModelListResult>('model/list', params);
-      models.push(...result.models);
+      models.push(...result.data);
       cursor = result.nextCursor ?? undefined;
     } while (cursor);
 
@@ -1088,7 +1150,7 @@ export class AppServerClient {
         const result = await this.sendRequest<ThreadListResult>('thread/list', params);
         cursor = result.nextCursor ?? undefined;
 
-        for (const thread of result.threads) {
+        for (const thread of result.data) {
           // Check in-flight map immediately before each archive
           if (this.inFlightRequests.has(thread.id)) {
             log.debug('Skipping active thread in orphan sweep', { threadId: thread.id });

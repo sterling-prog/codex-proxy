@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "enabled": true,
+  "commandDenyPatterns": [
+    "^bash\\b",
+    "^sh\\b",
+    "^zsh\\b",
+    "^/bin/bash\\b",
+    "^/bin/sh\\b",
+    "^/bin/zsh\\b",
+    "^sudo\\b",
+    "^docker\\b",
+    "^ssh\\b",
+    "^scp\\b",
+    "^rsync\\b",
+    "^env\\b",
+    "^curl\\b",
+    "^wget\\b",
+    "^nc\\b",
+    "^ncat\\b",
+    "^socat\\b",
+    "rm\\s+-rf\\s+/",
+    "\\|\\s*sh\\b",
+    "\\|\\s*bash\\b",
+    "\\|\\s*zsh\\b"
+  ],
+  "commandAllowPrefixes": [
+    "ls", "cat", "head", "tail", "find", "grep", "rg", "wc", "file", "stat", "tree", "diff",
+    "node", "npm", "npx", "tsc", "jest", "vitest", "eslint", "prettier",
+    "git status", "git log", "git diff", "git show", "git branch",
+    "git add", "git commit", "git checkout", "git stash",
+    "echo", "printf", "date", "which", "pwd", "cd", "mkdir", "cp", "mv", "touch",
+    "sed", "awk"
+  ],
+  "protectedPaths": [
+    "~/.openclaw",
+    "~/.ssh",
+    "~/.pm2",
+    "~/.config",
+    "/etc",
+    "/var"
+  ],
+  "protectedFiles": [
+    "tool-policy.json",
+    "openclaw.json",
+    "SOUL.md",
+    "MEMORY.md",
+    "AGENTS.md",
+    "IDENTITY.md"
+  ],
+  "allowedWritePaths": [
+    "~/codex-proxy",
+    "/tmp"
+  ],
+  "denyNetwork": true
+}

@@ -171,7 +171,7 @@ export interface ThreadListItem {
 }
 
 export interface ThreadListResult {
-  threads: ThreadListItem[];
+  data: ThreadListItem[];
   nextCursor: string | null;
 }
 
@@ -198,7 +198,7 @@ export interface Model {
 }
 
 export interface ModelListResult {
-  models: Model[];
+  data: Model[];
   nextCursor: string | null;
 }
 
@@ -352,6 +352,64 @@ export interface ExecCommandDenial {
 // account/chatgptAuthTokens/refresh
 export interface ChatGptAuthTokensRefresh extends ServerRequestBase {
   method: 'account/chatgptAuthTokens/refresh';
+}
+
+// ─── Tool approval param types (from Codex JSON schemas) ─────────────────────
+
+export interface NetworkApprovalContext {
+  host: string;
+  protocol: 'http' | 'https' | 'socks5Tcp' | 'socks5Udp';
+}
+
+export type CommandAction =
+  | { type: 'read' }
+  | { type: 'listFiles' }
+  | { type: 'search' }
+  | { type: 'unknown' };
+
+export interface CommandExecutionParams {
+  itemId: string;
+  threadId: string;
+  turnId: string;
+  command?: string | null;
+  cwd?: string | null;
+  commandActions?: CommandAction[] | null;
+  networkApprovalContext?: NetworkApprovalContext | null;
+  reason?: string | null;
+}
+
+export interface FileChangeParams {
+  itemId: string;
+  threadId: string;
+  turnId: string;
+  grantRoot?: string | null;
+  reason?: string | null;
+}
+
+// Approval response types
+export interface CommandExecutionApproval {
+  decision: 'accept';
+}
+
+export interface FileChangeApproval {
+  decision: 'accept';
+}
+
+export interface PermissionsGrant {
+  permissions: {
+    network?: { enabled: boolean };
+    fileSystem?: { read: string[]; write: string[] };
+  };
+  scope: 'session' | 'turn';
+}
+
+// Legacy approval response types (distinct from denial types above)
+export interface ApplyPatchApprovalResult {
+  decision: 'approved';
+}
+
+export interface ExecCommandApprovalResult {
+  decision: 'approved';
 }
 
 export type AnyServerRequest =
