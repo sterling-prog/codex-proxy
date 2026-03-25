@@ -18,13 +18,14 @@ OpenAI Chat Completions–compatible HTTP proxy that routes inference through th
 8. `thread/start` failure routes through cleanup function (not inline release)
 9. Use `Model.model` (NOT `Model.id`) for `/v1/models` id field
 10. `sourceKinds: ["custom"]` on `thread/list` for orphan reconciliation
+11. The proxy evaluates CLI-native tool execution requests against a policy config. Commands and file writes are approved/denied per policy rules. MCP/dynamic tools remain denied.
 
 ## Forbidden Patterns
 - No reverse-engineering private APIs (no direct chatgpt.com calls)
 - No credential extraction or impersonation
-- No tool execution passthrough
 - No thread reuse across requests
 - No OpenClaw tool mapping injection
+- No MCP/dynamic tool execution. CLI-native tools are policy-gated — see `tool-policy.json`. Override: `CODEX_TOOL_APPROVAL=deny` disables all approvals.
 
 ## Environment Variables
 - `CODEX_PROXY_PORT` (default 3460)
@@ -40,6 +41,8 @@ OpenAI Chat Completions–compatible HTTP proxy that routes inference through th
 - `CODEX_ORPHAN_SWEEP_INTERVAL_MS` (default 900000)
 - `CODEX_DEGRADATION_THRESHOLD` (default 5)
 - `CODEX_MAX_RESPONSE_SIZE` (default 5242880)
+- `CODEX_TOOL_APPROVAL` — set to `deny` to revert all tool approvals to blanket denial (v1.0 behavior)
+- `CODEX_TOOL_POLICY_PATH` — override path to `tool-policy.json` (default `~/codex-proxy/tool-policy.json`)
 
 ## PM2 Management
 ```
